@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>CGPA Planner / Predictor</title>
+</head>
+<body>
+  <h2>CGPA Planner / Predictor (for 5 Subjects)</h2>
+  <p>
+    This tool helps you <strong>plan or predict your CGPA</strong> based on your unit test and end sem marks.<br>
+    It assumes you will get <strong>20 out of 25</strong> in both Term Work and Practicals, which is common TCET.<br>
+    Use this after ISE 1 and ISE 2 results are out to estimate how much you need in ESE to reach your CGPA goals.<br>
+    (ISE 3 is assumed between 15-18 marks randomly.)
+  </p>
+
+  <div id="form"></div>
+  <button onclick="calculateCGPA()">Calculate CGPA</button>
+  <h3 id="result"></h3>
+
+  <script>
+    const subjects = 5;
+    const formDiv = document.getElementById("form");
+
+    for (let i = 0; i < subjects; i++) {
+      formDiv.innerHTML += `<h4>Subject ${i + 1}</h4>
+        ISE 1 (out of 20): <input type="number" id="ise1_${i}" min="0" max="20"><br>
+        ISE 2 (out of 20): <input type="number" id="ise2_${i}" min="0" max="20"><br>
+        ESE (out of 60): <input type="number" id="ese_${i}" min="0" max="60"><br>
+        Term Work (fixed at 20/25)<br>
+        Practical (fixed at 20/25)<br><br>`;
+    }
+
+    function calculateCGPA() {
+      let totalGP = 0;
+
+      for (let i = 0; i < subjects; i++) {
+        let ise1 = Number(document.getElementById(`ise1_${i}`).value);
+        let ise2 = Number(document.getElementById(`ise2_${i}`).value);
+        let ise3 = Math.floor(Math.random() * 4) + 15; // 15 to 18
+
+        let bestIse = [...[ise1, ise2, ise3]].sort((a, b) => b - a).slice(0, 2).reduce((a, b) => a + b, 0);
+        let ese = Number(document.getElementById(`ese_${i}`).value);
+        let tw = 20;
+        let pr = 20;
+
+        let total = bestIse + ese + tw + pr; // out of 150
+
+        let gp = getGradePoint(total);
+        totalGP += gp;
+      }
+
+      let cgpa = (totalGP / subjects).toFixed(2);
+      document.getElementById("result").innerText = `Predicted CGPA: ${cgpa}`;
+    }
+
+    function getGradePoint(total) {
+      if (total >= 135) return 10;
+      else if (total >= 120) return 9;
+      else if (total >= 105) return 8;
+      else if (total >= 90) return 7;
+      else if (total >= 75) return 6;
+      else if (total >= 60) return 5;
+      else return 0;
+    }
+  </script>
+</body>
+</html>

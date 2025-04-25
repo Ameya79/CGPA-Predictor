@@ -2,69 +2,178 @@
 <html>
 <head>
   <title>CGPA Planner / Predictor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 16px;
+      max-width: 600px;
+      margin: auto;
+      font-size: 18px;
+      background: #fdfdfd;
+    }
+    h2, h3 { margin-top: 24px; }
+    .note {
+      background: #e0f7fa;
+      border-left: 5px solid #00acc1;
+      padding: 12px; margin-bottom: 20px;
+      font-size: 16px;
+    }
+    .section { margin-bottom: 20px; }
+    label { display: block; margin: 8px 0 4px; }
+    input[type=number] {
+      width: 100%; padding: 8px; font-size: 16px;
+      margin-bottom: 8px;
+    }
+    input[type=radio] { margin-right: 8px; }
+    button {
+      font-size: 18px; padding: 10px 20px; cursor: pointer;
+      margin-bottom: 20px;
+    }
+    .glow {
+      display: inline-block; width: 12px; height: 12px;
+      background: limegreen; border-radius:50%;
+      box-shadow: 0 0 5px 2px limegreen;
+      margin-left: 8px; vertical-align: middle;
+    }
+    .credit {
+      margin-top: 40px; font-size: 16px; text-align: center;
+    }
+    .credit a {
+      color: #0077b5; text-decoration: none; font-weight: bold;
+    }
+  </style>
 </head>
 <body>
-  <h2>TCET CGPA Planner / Predictor (for 5 Subjects)</h2>
-  <p>
-    This tool helps you <strong>plan or predict your CGPA</strong> based on your unit test and end sem marks.<br>
-    It assumes you will get <strong>20 out of 25</strong> in both Term Work and Practicals, which is common TCET.<br>
-    Use this after ISE 1 and ISE 2 results are out to estimate how much you need in ESE to reach your CGPA goals.<br>
-    (ISE 3 is assumed between 15-18 marks randomly.)
-    <br><strong>You will likely get 0.10 to 0.20 CGPA more than the estimated one considering your practicals and term work is decent/average</strong>
-  </p>
+
+  <h2>CGPA Planner / Predictor</h2>
+  <div class="note">
+    • Use after ISE 1 &amp; ISE 2 are declared.<br>
+    • Choose whether to <strong>enter ISE 3 marks</strong> manually, or <strong>assume 17–18</strong>.<br>
+    • Assumes 20/25 in Term Work &amp; Practical.<br>
+    • Any ESE &lt; 28 → auto-fail (CGPA = 0).<br>
+    • Best 2 of 3 ISE scores are selected per subject (highlighted).
+  </div>
+
+  <div class="section">
+    <label><input type="radio" name="ise3mode" value="assume" checked> Assume ISE 3 (random 17–18)</label>
+    <label><input type="radio" name="ise3mode" value="manual"> Enter ISE 3 manually</label>
+  </div>
 
   <div id="form"></div>
   <button onclick="calculateCGPA()">Calculate CGPA</button>
   <h3 id="result"></h3>
 
+  <div class="credit">
+    Made by <strong>Ameya Kulkarni</strong><br>
+    <a href="https://www.linkedin.com/in/ameya-kulkarni-a31b74246?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app" target="_blank">
+      View LinkedIn Profile
+    </a>
+  </div>
+
   <script>
     const subjects = 5;
     const formDiv = document.getElementById("form");
 
-    for (let i = 0; i < subjects; i++) {
-      formDiv.innerHTML += `<h4>Subject ${i + 1}</h4>
-        ISE 1 (out of 20): <input type="number" id="ise1_${i}" min="0" max="20"><br>
-        ISE 2 (out of 20): <input type="number" id="ise2_${i}" min="0" max="20"><br>
-        ESE (out of 60): <input type="number" id="ese_${i}" min="0" max="60"><br>
-        Term Work (fixed at 20/25)<br>
-        Practical (fixed at 20/25)<br><br>`;
+    function buildForm() {
+      formDiv.innerHTML = '';
+      const ise3mode = document.querySelector('input[name="ise3mode"]:checked').value;
+      for (let i = 0; i < subjects; i++) {
+        formDiv.innerHTML += `
+          <div class="section">
+            <h4>Subject ${i+1}</h4>
+            <label>ISE 1 (0–20):</label>
+            <input type="number" id="ise1_${i}" min="0" max="20" oninput="validRange(this,0,20)">
+            <label>ISE 2 (0–20):</label>
+            <input type="number" id="ise2_${i}" min="0" max="20" oninput="validRange(this,0,20)">
+            ${ise3mode==='manual' 
+              ? `<label>ISE 3 (0–20):</label>
+                 <input type="number" id="ise3_${i}" min="0" max="20" oninput="validRange(this,0,20)">`
+              : `<p>ISE 3: <em>assumed 17–18</em></p>`
+            }
+            <label>ESE (0–60):</label>
+            <input type="number" id="ese_${i}" min="0" max="60" oninput="validRange(this,0,60)">
+            <div id="glow_${i}"></div>
+          </div>`;
+      }
+    }
+
+    // Rebuild form when mode changes
+    document.querySelectorAll('input[name="ise3mode"]').forEach(radio =>
+      radio.addEventListener('change', buildForm)
+    );
+    buildForm();
+
+    function validRange(el, min, max) {
+      let v = parseInt(el.value);
+      if (isNaN(v)) el.value = '';
+      else if (v < min) el.value = min;
+      else if (v > max) el.value = max;
     }
 
     function calculateCGPA() {
-      let totalGP = 0;
+      let totalGP = 0, fail = false;
+      const ise3mode = document.querySelector('input[name="ise3mode"]:checked').value;
 
       for (let i = 0; i < subjects; i++) {
-        let ise1 = Number(document.getElementById(`ise1_${i}`).value);
-        let ise2 = Number(document.getElementById(`ise2_${i}`).value);
-        let ise3 = Math.floor(Math.random() * 4) + 15; // 15 to 18
+        // fetch and validate ISE1 & ISE2
+        const ise1 = Number(document.getElementById(`ise1_${i}`).value);
+        const ise2 = Number(document.getElementById(`ise2_${i}`).value);
+        if (ise1===0&&document.getElementById(`ise1_${i}`).value==='') { fail=true; break; }
+        if (ise2===0&&document.getElementById(`ise2_${i}`).value==='') { fail=true; break; }
 
-        let bestIse = [...[ise1, ise2, ise3]].sort((a, b) => b - a).slice(0, 2).reduce((a, b) => a + b, 0);
-        let ese = Number(document.getElementById(`ese_${i}`).value);
-        let tw = 20;
-        let pr = 20;
+        // ISE3
+        let ise3 = ise3mode==='manual'
+          ? Number(document.getElementById(`ise3_${i}`).value)
+          : (Math.floor(Math.random() * 2) + 17);
+        if (ise3mode==='manual' && (ise3===0&&document.getElementById(`ise3_${i}`).value==='')) {
+          fail=true; break;
+        }
 
-        let total = bestIse + ese + tw + pr; // out of 150
+        // ESE
+        const ese = Number(document.getElementById(`ese_${i}`).value);
+        if (ese===0 && document.getElementById(`ese_${i}`).value==='') { fail=true; break; }
+        if (ese < 28) { fail = true; break; }
 
-        let gp = getGradePoint(total);
-        totalGP += gp;
+        // Best-2 ISE logic
+        let allIse = [ise1, ise2, ise3];
+        let best2 = [...allIse].sort((a,b)=>b-a).slice(0,2);
+
+        // Highlight selections
+        const glowDiv = document.getElementById(`glow_${i}`);
+        glowDiv.innerHTML = '';
+        allIse.forEach((m, idx) => {
+          if (best2.includes(m)) {
+            glowDiv.innerHTML += `Best ISE${idx+1}: ${m} <span class="glow"></span><br>`;
+            best2.splice(best2.indexOf(m),1);
+          }
+        });
+
+        // total & grade-point
+        let totalMarks = best2.reduce((a,b)=>a+b,0) + ise3mode==='manual'?0:0; // best2 already sum of two ISEs
+        totalMarks = best2.reduce((a,b)=>a+b,0) + 0; // placeholder
+        totalMarks = best2.reduce((a,b)=>a+b,0); // sum again
+        // Actually we need: sum(best2) + ESE + 20 + 20
+        totalMarks = (allIse.sort((a,b)=>b-a)[0] + allIse.sort((a,b)=>b-a)[1]) + ese + 20 + 20;
+
+        const percent = (totalMarks / 150) * 100;
+        totalGP += mapPercentToPointer(percent);
       }
 
-      let cgpa = (totalGP / subjects).toFixed(2);
-      document.getElementById("result").innerText = `Predicted CGPA: ${cgpa}`;
+      const res = document.getElementById("result");
+      if (fail) res.innerText = "Error or FAIL detected (empty/invalid or ESE<28): CGPA = 0";
+      else res.innerText = `Predicted CGPA: ${(totalGP/subjects).toFixed(2)}`;
     }
 
-    function getGradePoint(total) {
-      if (total >= 135) return 10;
-      else if (total >= 120) return 9;
-      else if (total >= 105) return 8;
-      else if (total >= 90) return 7;
-      else if (total >= 75) return 6;
-      else if (total >= 60) return 5;
-      else return 0;
+    function mapPercentToPointer(p) {
+      if (p >= 90) return 10;
+      if (p >= 80) return 9;
+      if (p >= 70) return 8;
+      if (p >= 60) return 7;
+      if (p >= 50) return 6;
+      if (p >= 40) return 5;
+      return 0;
     }
-   
-      </script>
-       <h3>Made by Ameya Kulkarni, <a href="https://www.linkedin.com/in/ameya-kulkarni-a31b74246?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app">linkedin</a>
-       </h3>
+  </script>
 </body>
 </html>

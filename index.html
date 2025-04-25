@@ -1,179 +1,126 @@
-<!DOCTYPE html>
-<html>
+<!DOCTYPE html><html lang="en">
 <head>
-  <title>CGPA Planner / Predictor</title>
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CGPA Planner / Predictor</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 16px;
-      max-width: 600px;
-      margin: auto;
-      font-size: 18px;
-      background: #fdfdfd;
-    }
-    h2, h3 { margin-top: 24px; }
-    .note {
-      background: #e0f7fa;
-      border-left: 5px solid #00acc1;
-      padding: 12px; margin-bottom: 20px;
-      font-size: 16px;
-    }
-    .section { margin-bottom: 20px; }
-    label { display: block; margin: 8px 0 4px; }
-    input[type=number] {
-      width: 100%; padding: 8px; font-size: 16px;
-      margin-bottom: 8px;
-    }
-    input[type=radio] { margin-right: 8px; }
-    button {
-      font-size: 18px; padding: 10px 20px; cursor: pointer;
-      margin-bottom: 20px;
-    }
-    .glow {
-      display: inline-block; width: 12px; height: 12px;
-      background: limegreen; border-radius:50%;
-      box-shadow: 0 0 5px 2px limegreen;
-      margin-left: 8px; vertical-align: middle;
-    }
-    .credit {
-      margin-top: 40px; font-size: 16px; text-align: center;
-    }
-    .credit a {
-      color: #0077b5; text-decoration: none; font-weight: bold;
-    }
+    body { font-family: Arial, sans-serif; padding:16px; max-width:600px; margin:auto; background:#fdfdfd; }
+    h2,h3 { margin-top:24px; }
+    .note { background:#e0f7fa; border-left:5px solid #00acc1; padding:12px; margin-bottom:20px; font-size:16px; }
+    .section { margin-bottom:20px; }
+    label { display:block; margin:8px 0 4px; }
+    input[type=number], select { width:100%; padding:8px; font-size:16px; margin-bottom:8px; }
+    button { font-size:18px; padding:10px 20px; cursor:pointer; margin-bottom:20px; }
+    .glow { display:inline-block; width:12px; height:12px; background:limegreen; border-radius:50%; box-shadow:0 0 5px 2px limegreen; margin-left:8px; vertical-align:middle; }
+    .credit { margin-top:40px; font-size:16px; text-align:center; }
+    .credit a { color:#0077b5; text-decoration:none; font-weight:bold; }
+    .post-note { font-size:14px; color:#555; margin-top:16px; }
   </style>
 </head>
-<body>
-
-  <h2>CGPA Planner / Predictor</h2>
+<body>  <h2>CGPA Planner / Predictor</h2>
   <div class="note">
-    • Use after ISE 1 &amp; ISE 2 are declared.<br>
-    • Choose whether to <strong>enter ISE 3 marks</strong> manually, or <strong>assume 17–18</strong>.<br>
-    • Assumes 20/25 in Term Work &amp; Practical.<br>
-    • Any ESE &lt; 28 → auto-fail (CGPA = 0).<br>
-    • Best 2 of 3 ISE scores are selected per subject (highlighted).
-  </div>
-
-  <div class="section">
-    <label><input type="radio" name="ise3mode" value="assume" checked> Assume ISE 3 (random 17–18)</label>
-    <label><input type="radio" name="ise3mode" value="manual"> Enter ISE 3 manually</label>
-  </div>
-
-  <div id="form"></div>
-  <button onclick="calculateCGPA()">Calculate CGPA</button>
-  <h3 id="result"></h3>
-
-  <div class="credit">
+    • Use after ISE 1 &amp; ISE 2 declared.<br>
+    • Enter ISE 3 manually or assume 17–18.<br>
+    • Assumes 20/25 TW &amp; Practical (40 total).<br>
+    • ESE &lt; 24 → fail (CGPA 0).<br>
+    • Best 2 of 3 ISEs selected per subject.
+  </div>  <div class="section">
+    <label><input type="radio" name="mode" value="predict" checked onchange="toggleMode()"> Predictor</label>
+    <label><input type="radio" name="mode" value="plan" onchange="toggleMode()"> Planner</label>
+  </div>  <!-- Predictor -->  <div id="predictor">
+    <div class="section">
+      <label><input type="radio" name="ise3mode" value="assume" checked onchange="buildForm()"> Assume ISE 3</label>
+      <label><input type="radio" name="ise3mode" value="manual" onchange="buildForm()"> Enter ISE 3 manually</label>
+    </div>
+    <div id="form"></div>
+    <button onclick="calculateCGPA()">Calculate CGPA</button>
+    <h3 id="result"></h3>
+    <p class="post-note">Note: If you score average or better in term work &amp; practicals, actual CGPA may be 0.1–0.6 higher.</p>
+  </div>  <!-- Planner -->  <div id="planner" style="display:none;">
+    <div class="section">
+      <label>Desired CGPA (0–10):</label>
+      <input type="number" id="target" min="0" max="10" step="0.1">
+    </div>
+    <button onclick="calculatePlan()">Show Required Marks</button>
+    <div id="planResult"></div>
+    <p class="post-note">Note: Achieving average term work &amp; practical scores can boost actual CGPA by ~0.1–0.6.</p>
+  </div>  <div class="credit">
     Made by <strong>Ameya Kulkarni</strong><br>
-    <a href="https://www.linkedin.com/in/ameya-kulkarni-a31b74246?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app" target="_blank">
-      View LinkedIn Profile
-    </a>
-  </div>
+    <a href="https://www.linkedin.com/in/ameya-kulkarni-a31b74246" target="_blank">LinkedIn</a>
+  </div>  <script>
+    const subjects=5, TWPR=40;
+    const formDiv=document.getElementById('form');
 
-  <script>
-    const subjects = 5;
-    const formDiv = document.getElementById("form");
+    // normalize functions
+    function normISE(m){ if(m>=17) return 10; if(m>=15) return 9; if(m>=13) return 8; if(m>=10) return 7; if(m>=7) return 6; return 0; }
+    function normESE(m){ if(m>=48) return 10; if(m>=42) return 9; if(m>=36) return 8; if(m>=30) return 7; if(m>=24) return 6; return 0; }
 
-    function buildForm() {
-      formDiv.innerHTML = '';
-      const ise3mode = document.querySelector('input[name="ise3mode"]:checked').value;
-      for (let i = 0; i < subjects; i++) {
-        formDiv.innerHTML += `
-          <div class="section">
-            <h4>Subject ${i+1}</h4>
-            <label>ISE 1 (0–20):</label>
-            <input type="number" id="ise1_${i}" min="0" max="20" oninput="validRange(this,0,20)">
-            <label>ISE 2 (0–20):</label>
-            <input type="number" id="ise2_${i}" min="0" max="20" oninput="validRange(this,0,20)">
-            ${ise3mode==='manual' 
-              ? `<label>ISE 3 (0–20):</label>
-                 <input type="number" id="ise3_${i}" min="0" max="20" oninput="validRange(this,0,20)">`
-              : `<p>ISE 3: <em>assumed 17–18</em></p>`
-            }
-            <label>ESE (0–60):</label>
-            <input type="number" id="ese_${i}" min="0" max="60" oninput="validRange(this,0,60)">
-            <div id="glow_${i}"></div>
-          </div>`;
+    // thresholds for planner
+    const iseThresholdSum={10:34,9:30,8:26,7:20,6:14}; // best2 sum raw
+    const eseThreshold={10:48,9:42,8:36,7:30,6:24};
+
+    function buildForm(){
+      formDiv.innerHTML='';
+      const mode3=document.querySelector('input[name="ise3mode"]:checked').value;
+      for(let i=0;i<subjects;i++){
+        formDiv.innerHTML+=
+          `<div class="section"><h4>Subject ${i+1}</h4>
+             <label>ISE 1:</label><input type="number" id="ise1_${i}" min="0" max="20">
+             <label>ISE 2:</label><input type="number" id="ise2_${i}" min="0" max="20">
+             ${mode3==='manual'
+               ? `<label>ISE 3:</label><input type="number" id="ise3_${i}" min="0" max="20">`
+               : `<p>ISE 3: <em>assumed 17–18</em></p>`}
+             <label>ESE:</label><input type="number" id="ese_${i}" min="0" max="60">
+             <div id="glow_${i}"></div>
+           </div>`;
       }
     }
-
-    // Rebuild form when mode changes
-    document.querySelectorAll('input[name="ise3mode"]').forEach(radio =>
-      radio.addEventListener('change', buildForm)
-    );
+    document.querySelectorAll('input[name="ise3mode"]').forEach(r=>r.onchange=buildForm);
     buildForm();
 
-    function validRange(el, min, max) {
-      let v = parseInt(el.value);
-      if (isNaN(v)) el.value = '';
-      else if (v < min) el.value = min;
-      else if (v > max) el.value = max;
+    function toggleMode(){
+      const m=document.querySelector('input[name="mode"]:checked').value;
+      document.getElementById('predictor').style.display=m==='predict'?'block':'none';
+      document.getElementById('planner').style.display=m==='plan'?'block':'none';
+      document.getElementById('result').innerText='';
+      document.getElementById('planResult').innerHTML='';
     }
 
-    function calculateCGPA() {
-      let totalGP = 0, fail = false;
-      const ise3mode = document.querySelector('input[name="ise3mode"]:checked').value;
+    function calculateCGPA(){
+      let sumGP=0, fail=false;
+      const m3=document.querySelector('input[name="ise3mode"]:checked').value;
+      for(let i=0;i<subjects;i++){
+        const i1=+document.getElementById(`ise1_${i}`).value,
+              i2=+document.getElementById(`ise2_${i}`).value;
+        if([i1,i2].some(v=>isNaN(v))){fail=true;break;}
+        const i3=m3==='manual'?+document.getElementById(`ise3_${i}`).value:(Math.floor(Math.random()*2)+17);
+        const e=+document.getElementById(`ese_${i}`).value;
+        if(isNaN(i3)||isNaN(e)||e<24){fail=true;break;}
 
-      for (let i = 0; i < subjects; i++) {
-        // fetch and validate ISE1 & ISE2
-        const ise1 = Number(document.getElementById(`ise1_${i}`).value);
-        const ise2 = Number(document.getElementById(`ise2_${i}`).value);
-        if (ise1===0&&document.getElementById(`ise1_${i}`).value==='') { fail=true; break; }
-        if (ise2===0&&document.getElementById(`ise2_${i}`).value==='') { fail=true; break; }
-
-        // ISE3
-        let ise3 = ise3mode==='manual'
-          ? Number(document.getElementById(`ise3_${i}`).value)
-          : (Math.floor(Math.random() * 2) + 17);
-        if (ise3mode==='manual' && (ise3===0&&document.getElementById(`ise3_${i}`).value==='')) {
-          fail=true; break;
-        }
-
-        // ESE
-        const ese = Number(document.getElementById(`ese_${i}`).value);
-        if (ese===0 && document.getElementById(`ese_${i}`).value==='') { fail=true; break; }
-        if (ese < 28) { fail = true; break; }
-
-        // Best-2 ISE logic
-        let allIse = [ise1, ise2, ise3];
-        let best2 = [...allIse].sort((a,b)=>b-a).slice(0,2);
-
-        // Highlight selections
-        const glowDiv = document.getElementById(`glow_${i}`);
-        glowDiv.innerHTML = '';
-        allIse.forEach((m, idx) => {
-          if (best2.includes(m)) {
-            glowDiv.innerHTML += `Best ISE${idx+1}: ${m} <span class="glow"></span><br>`;
-            best2.splice(best2.indexOf(m),1);
-          }
+        const arr=[i1,i2,i3].sort((a,b)=>b-a), sum2=arr[0]+arr[1];
+        const glowDiv=document.getElementById(`glow_${i}`); glowDiv.innerHTML='';
+        arr.slice(0,2).forEach(v=>{
+          const idx=[i1,i2,i3].indexOf(v);
+          glowDiv.innerHTML+=`ISE${idx+1}:${v}<span class="glow"></span><br>`;
         });
-
-        // total & grade-point
-        let totalMarks = best2.reduce((a,b)=>a+b,0) + ise3mode==='manual'?0:0; // best2 already sum of two ISEs
-        totalMarks = best2.reduce((a,b)=>a+b,0) + 0; // placeholder
-        totalMarks = best2.reduce((a,b)=>a+b,0); // sum again
-        // Actually we need: sum(best2) + ESE + 20 + 20
-        totalMarks = (allIse.sort((a,b)=>b-a)[0] + allIse.sort((a,b)=>b-a)[1]) + ese + 20 + 20;
-
-        const percent = (totalMarks / 150) * 100;
-        totalGP += mapPercentToPointer(percent);
+        const g1=normISE(sum2/2), g2=normESE(e);
+        sumGP+=Math.min(g1,g2);
       }
-
-      const res = document.getElementById("result");
-      if (fail) res.innerText = "Error or FAIL detected (empty/invalid or ESE<28): CGPA = 0";
-      else res.innerText = `Predicted CGPA: ${(totalGP/subjects).toFixed(2)}`;
+      document.getElementById('result').innerText=fail? 'Fail/invalid (ESE<24): CGPA=0' : `Predicted CGPA: ${(sumGP/subjects).toFixed(2)}`;
     }
 
-    function mapPercentToPointer(p) {
-      if (p >= 90) return 10;
-      if (p >= 80) return 9;
-      if (p >= 70) return 8;
-      if (p >= 60) return 7;
-      if (p >= 50) return 6;
-      if (p >= 40) return 5;
-      return 0;
+    function calculatePlan(){
+      const tgt=+document.getElementById('target').value;
+      if(isNaN(tgt)||tgt<6||tgt>10){alert('Planner works for CGPA 6–10');return;}
+      const ptr=Math.ceil(tgt);
+      let html='';
+      for(let i=1;i<=subjects;i++){
+        html+=`<div class="section"><strong>Subject ${i}:</strong><br>
+          Best 2 ISE sum ≥ ${iseThresholdSum[ptr]||14}/40<br>
+          ESE ≥ ${eseThreshold[ptr]||24}/60
+        </div>`;
+      }
+      document.getElementById('planResult').innerHTML=html;
     }
-  </script>
-</body>
+  </script></body>
 </html>
